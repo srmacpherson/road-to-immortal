@@ -1,4 +1,11 @@
+using Microsoft.EntityFrameworkCore;
+using RoadToImmortal.Api.Data;
+using RoadToImmortal.Api.Models;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -43,7 +50,29 @@ app.MapGet("/weatherforecast", () =>
 })
 .WithName("GetWeatherForecast");
 
+app.MapPost("/players", async (CreatePlayerRequest request, AppDbContext db) =>
+{
+    var player = new Player
+    {
+        SteamId = request.SteamId,
+        PersonaName = request.PersonaName,
+        CurrentMmr = request.CurrentMmr,
+        LastUpdated = DateTime.UtcNow
+    };
+
+    db.Players.Add(player);
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/players/{player.SteamId}", player);
+});
+
 app.Run();
+
+record CreatePlayerRequest(
+    long SteamId,
+    string PersonaName,
+    int? CurrentMmr
+);
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {

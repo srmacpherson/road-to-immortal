@@ -52,9 +52,21 @@ app.MapGet("/players/{steamId}/steam", async (long steamId, SteamService steamSe
     });
 });
 
-app.MapGet("/players/{steamId}/matches", async (long steamId, DotaService dotaService) =>
+// get from OpenDota via DotaService
+//app.MapGet("/players/{steamId}/matches", async (long steamId, DotaService dotaService) =>
+//{
+//    var matches = await dotaService.GetRecentMatchesAsync(steamId);
+
+//    return Results.Ok(matches);
+//});
+
+// get from database via AppDbContext
+app.MapGet("/players/{steamId}/matches", async (long steamId, AppDbContext db) =>
 {
-    var matches = await dotaService.GetRecentMatchesAsync(steamId);
+    var matches = await db.Matches
+        .Where(m => m.SteamId == steamId)
+        .OrderByDescending(m => m.FetchedAt)
+        .ToListAsync();
 
     return Results.Ok(matches);
 });

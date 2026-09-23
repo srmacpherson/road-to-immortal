@@ -1,13 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using RoadToImmortal.Api.Data;
 using RoadToImmortal.Api.Models;
+using RoadToImmortal.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add services to the container.
+builder.Services.AddHttpClient<SteamService>();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -33,6 +35,22 @@ app.MapGet("/", () =>
         Application = "Road to Immortal",
         Status = "Running",
         Version = "0.1"
+    });
+});
+
+app.MapGet("/players/{steamId}/steam", async (long steamId, SteamService steamService) =>
+{
+    var playerName = await steamService.GetPlayerNameAsync(steamId);
+
+    if (playerName is null)
+    {
+        return Results.NotFound();
+    }
+
+    return Results.Ok(new
+    {
+        SteamId = steamId,
+        PersonaName = playerName
     });
 });
 

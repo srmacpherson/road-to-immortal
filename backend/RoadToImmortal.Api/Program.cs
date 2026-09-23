@@ -71,6 +71,42 @@ app.MapGet("/players/{steamId}/matches", async (long steamId, AppDbContext db) =
     return Results.Ok(matches);
 });
 
+app.MapGet("/players/{steamId}/summary", async (long steamId, AppDbContext db) =>
+{
+    var matches = await db.Matches
+        .Where(m => m.SteamId == steamId)
+        .ToListAsync();
+
+    if (matches.Count == 0)
+    {
+        return Results.NotFound(new
+        {
+            Message = "No matches found for this player."
+        });
+    }
+
+    var wins = matches.Count(m =>
+        (m.PlayerSlot < 128 && m.RadiantWin) ||
+        (m.PlayerSlot >= 128 && !m.RadiantWin));
+
+    var losses = matches.Count - wins;
+
+    var summary = new
+    {
+        SteamId = steamId,
+        MatchesPlayed = matches.Count,
+        Wins = wins,
+        Losses = losses,
+        WinRate = Math.Round((double)wins / matches.Count * 100, 2),
+        AverageKills = Math.Round(matches.Average(m => m.Kills), 2),
+        AverageDeaths = Math.Round(matches.Average(m => m.Deaths), 2),
+        AverageAssists = Math.Round(matches.Average(m => m.Assists), 2),
+        AverageDurationSeconds = Math.Round(matches.Average(m => m.Duration), 2)
+    };
+
+    return Results.Ok(summary);
+});
+
 #endregion
 
 #region POST

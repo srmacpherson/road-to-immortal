@@ -9,6 +9,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddHttpClient<SteamService>();
+builder.Services.AddHttpClient<DotaService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
@@ -52,6 +53,13 @@ app.MapGet("/players/{steamId}/steam", async (long steamId, SteamService steamSe
         SteamId = steamId,
         PersonaName = playerName
     });
+});
+
+app.MapGet("/players/{steamId}/matches", async (long steamId, DotaService dotaService) =>
+{
+    var matches = await dotaService.GetRecentMatchesAsync(steamId);
+
+    return Results.Ok(matches);
 });
 
 app.MapGet("/weatherforecast", () =>

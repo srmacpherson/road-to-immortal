@@ -24,6 +24,7 @@ if (app.Environment.IsDevelopment())
 
 //app.UseHttpsRedirection();
 
+# region GET
 
 app.MapGet("/", () =>
 {
@@ -58,6 +59,10 @@ app.MapGet("/players/{steamId}/matches", async (long steamId, DotaService dotaSe
     return Results.Ok(matches);
 });
 
+#endregion
+
+#region POST
+
 app.MapPost("/players", async (CreatePlayerRequest request, AppDbContext db) =>
 {
     var player = new Player
@@ -73,6 +78,19 @@ app.MapPost("/players", async (CreatePlayerRequest request, AppDbContext db) =>
 
     return Results.Created($"/players/{player.SteamId}", player);
 });
+
+app.MapPost("/players/{steamId}/matches/sync", async (long steamId, DotaService dotaService) =>
+{
+    await dotaService.SyncRecentMatchesAsync(steamId);
+
+    return Results.Ok(new
+    {
+        SteamId = steamId,
+        Message = "Recent matches synced successfully."
+    });
+});
+
+#endregion
 
 app.Run();
 

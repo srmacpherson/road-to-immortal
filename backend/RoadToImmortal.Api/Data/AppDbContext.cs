@@ -15,4 +15,6 @@ public class AppDbContext : DbContext
     public DbSet<Match> Matches => Set<Match>();
 
     public DbSet<Hero> Heroes => Set<Hero>();
+
+    public DbSet<MmrSnapshot> MmrSnapshots => Set<MmrSnapshot>();
 }

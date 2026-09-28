@@ -27,5 +27,9 @@ public class Match
 
     public int Assists { get; set; }
 
-    public DateTime FetchedAt { get; set; } = DateTime.UtcNow;
+    // When did the game happen
+    public DateTime MatchDate { get; set; } 
+
+    // When did we fetch the data from OpenDota
+    public DateTime FetchedAt { get; set; } = DateTime.UtcNow; 
 }

@@ -1,95 +1,121 @@
+import { useEffect, useState } from "react";
+import { getDashboard, type Dashboard } from "./api/dashboardApi";
+
+const STEAM_ID = "76561199124533567";
+
 function App() {
-    return (
-        <div className= "app" >
-        <header className="header" >
-            <div>
-            <h1>Road to Immortal </h1>
-                < p > Track the climb.Understand the game.Reach Immortal.</p>
-                    </div>
+    const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-                    < div className = "mmr-badge" >
-                        <span>Current MMR </span>
-                            < strong > 5, 360 </strong>
-                            </div>
-                            </header>
+    useEffect(() => {
+        async function loadDashboard() {
+            try {
+                const data = await getDashboard(STEAM_ID);
+                setDashboard(data);
+            } catch (err) {
+                setError("Failed to load dashboard.");
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        }
 
-                            < main className = "dashboard" >
-                                <section className="card" >
-                                    <h2>MMR Progression </h2>
+        loadDashboard();
+    }, []);
 
-                                        < div className = "chart-placeholder" >
-                                            MMR chart coming next
-                                                </div>
-                                                </section>
+    if (loading) {
+        return <div className="app" > Loading dashboard...</div>;
+    }
 
-                                                < section className = "grid" >
-                                                    <div className="card" >
-                                                        <h2>Recent Form </h2>
+    if (error || !dashboard) {
+        return <div className="app" > { error ?? "No dashboard data."
+    } </div>;
+}
 
-                                                            < div className = "form" >
-                                                                <span className="win" > W </span>
-                                                                    < span className = "win" > W </span>
-                                                                        < span className = "loss" > L </span>
-                                                                            < span className = "win" > W </span>
-                                                                                < span className = "win" > W </span>
-                                                                                    < span className = "loss" > L </span>
-                                                                                        < span className = "win" > W </span>
-                                                                                            < span className = "win" > W </span>
-                                                                                                < span className = "win" > W </span>
-                                                                                                    < span className = "loss" > L </span>
-                                                                                                        </div>
-                                                                                                        </div>
+return (
+    <div className= "app" >
+    <header className="header" >
+        <div>
+        <h1>Road to Immortal </h1>
+            < p > Track the climb.Understand the game.Reach Immortal.</p>
+                </div>
 
-                                                                                                        < div className = "card" >
-                                                                                                            <h2>Overall Stats </h2>
+                < div className = "mmr-badge" >
+                    <span>Current MMR </span>
+                        < strong > { dashboard.mmr.current ?? "—" } </strong>
+                        </div>
+                        </header>
 
-                                                                                                                < div className = "stats" >
-                                                                                                                    <div>
-                                                                                                                    <span>Win Rate </span>
-                                                                                                                        < strong > 60 % </strong>
-                                                                                                                        </div>
+                        < main className = "dashboard" >
+                            <section className="card" >
+                                <h2>MMR Progression </h2>
 
-                                                                                                                        < div >
-                                                                                                                        <span>Kills </span>
-                                                                                                                        < strong > 8.4 </strong>
-                                                                                                                        </div>
+                                    < div className = "chart-placeholder" >
+                                        MMR chart coming next
+                                            </div>
+                                            </section>
 
-                                                                                                                        < div >
-                                                                                                                        <span>Deaths </span>
-                                                                                                                        < strong > 6.2 </strong>
-                                                                                                                        </div>
+                                            < section className = "grid" >
+                                                <div className="card" >
+                                                    <h2>Recent Form </h2>
 
-                                                                                                                        < div >
-                                                                                                                        <span>Assists </span>
-                                                                                                                        < strong > 14.1 </strong>
-                                                                                                                        </div>
-                                                                                                                        </div>
-                                                                                                                        </div>
-                                                                                                                        </section>
+                                                        < div className = "form" >
+                                                        {
+                                                            dashboard.recentForm.matches.map((match) => (
+                                                                <span
+                  key= { match.matchId }
+                  className = { match.result === "W" ? "win" : "loss" }
+                                                                >
+                                                                { match.result }
+                                                                </span>
+                                                            ))
+                                                        }
+                                                            </div>
+                                                            </div>
 
-                                                                                                                        < section className = "card" >
-                                                                                                                            <h2>Hero Performance </h2>
+                                                            < div className = "card" >
+                                                                <h2>Overall Stats </h2>
 
-                                                                                                                                < div className = "hero-row" >
-                                                                                                                                    <strong>Sniper </strong>
-                                                                                                                                    < span > 5 games </span>
-                                                                                                                                        < span > 60 % WR </span>
-                                                                                                                                        </div>
+                                                                    < div className = "stats" >
+                                                                        <div>
+                                                                        <span>Win Rate </span>
+                                                                            < strong > { dashboard.overall.winRate } % </strong>
+                                                                            </div>
 
-                                                                                                                                        < div className = "hero-row" >
-                                                                                                                                            <strong>Axe </strong>
-                                                                                                                                            < span > 4 games </span>
-                                                                                                                                                < span > 75 % WR </span>
-                                                                                                                                                </div>
+                                                                            < div >
+                                                                            <span>Kills </span>
+                                                                            < strong > { dashboard.overall.averageKills } </strong>
+                                                                            </div>
 
-                                                                                                                                                < div className = "hero-row" >
-                                                                                                                                                    <strong>Puck </strong>
-                                                                                                                                                    < span > 3 games </span>
-                                                                                                                                                        < span > 33 % WR </span>
-                                                                                                                                                        </div>
-                                                                                                                                                        </section>
-                                                                                                                                                        </main>
-                                                                                                                                                        </div>
+                                                                            < div >
+                                                                            <span>Deaths </span>
+                                                                            < strong > { dashboard.overall.averageDeaths } </strong>
+                                                                            </div>
+
+                                                                            < div >
+                                                                            <span>Assists </span>
+                                                                            < strong > { dashboard.overall.averageAssists } </strong>
+                                                                            </div>
+                                                                            </div>
+                                                                            </div>
+                                                                            </section>
+
+                                                                            < section className = "card" >
+                                                                                <h2>Hero Performance </h2>
+
+{
+    dashboard.heroes.map((hero) => (
+        <div className= "hero-row" key = { hero.heroId } >
+        <strong>{ hero.heroName } </strong>
+        < span > { hero.games } games </span>
+        < span > { hero.winRate } % WR </span>
+    </div>
+    ))
+}
+</section>
+    </main>
+    </div>
   );
 }
 

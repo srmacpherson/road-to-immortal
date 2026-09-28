@@ -50,6 +50,7 @@ public class DotaService
             var databaseMatch = new Match
             {
                 MatchId = match.MatchId,
+                MatchDate = DateTimeOffset.FromUnixTimeSeconds(match.StartTime).UtcDateTime,
                 SteamId = steamId,
                 PlayerSlot = match.PlayerSlot,
                 RadiantWin = match.RadiantWin,
@@ -101,6 +102,9 @@ public class DotaMatch
 {
     [JsonPropertyName("match_id")]
     public long MatchId { get; set; }
+
+    [JsonPropertyName("start_time")]
+    public long StartTime { get; set; }
 
     [JsonPropertyName("player_slot")]
     public int PlayerSlot { get; set; }

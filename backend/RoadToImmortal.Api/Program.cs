@@ -107,6 +107,64 @@ app.MapGet("/players/{steamId}/summary", async (long steamId, AppDbContext db) =
     return Results.Ok(summary);
 });
 
+app.MapGet("/players/{steamId}/heroes", async (long steamId, AppDbContext db) =>
+{
+    var heroStats = await db.Matches
+        .Where(m => m.SteamId == steamId)
+        .Join(
+            db.Heroes,
+            match => match.HeroId,
+            hero => hero.HeroId,
+            (match, hero) => new
+            {
+                match,
+                hero
+            })
+        .GroupBy(x => new
+        {
+            x.hero.HeroId,
+            x.hero.LocalizedName
+        })
+        .Select(group => new
+        {
+            HeroId = group.Key.HeroId,
+            HeroName = group.Key.LocalizedName,
+
+            Games = group.Count(),
+
+            Wins = group.Count(x =>
+                (x.match.PlayerSlot < 128 && x.match.RadiantWin) ||
+                (x.match.PlayerSlot >= 128 && !x.match.RadiantWin)),
+
+            AverageKills = Math.Round(
+                group.Average(x => x.match.Kills), 2),
+
+            AverageDeaths = Math.Round(
+                group.Average(x => x.match.Deaths), 2),
+
+            AverageAssists = Math.Round(
+                group.Average(x => x.match.Assists), 2)
+        })
+        .OrderByDescending(h => h.Games)
+        .ToListAsync();
+
+    var result = heroStats.Select(h => new
+    {
+        h.HeroId,
+        h.HeroName,
+        h.Games,
+        h.Wins,
+        Losses = h.Games - h.Wins,
+        WinRate = Math.Round(
+            (double)h.Wins / h.Games * 100, 2),
+        h.AverageKills,
+        h.AverageDeaths,
+        h.AverageAssists
+    });
+
+    return Results.Ok(result);
+});
+
 #endregion
 
 #region POST
@@ -135,6 +193,16 @@ app.MapPost("/players/{steamId}/matches/sync", async (long steamId, DotaService 
     {
         SteamId = steamId,
         Message = "Recent matches synced successfully."
+    });
+});
+
+app.MapPost("/heroes/sync", async (DotaService dotaService) =>
+{
+    await dotaService.SyncHeroesAsync();
+
+    return Results.Ok(new
+    {
+        Message = "Heroes synced successfully."
     });
 });
 

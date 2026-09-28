@@ -65,7 +65,7 @@ app.MapGet("/players/{steamId}/matches", async (long steamId, AppDbContext db) =
 {
     var matches = await db.Matches
         .Where(m => m.SteamId == steamId)
-        .OrderByDescending(m => m.FetchedAt)
+        .OrderByDescending(m => m.MatchDate)
         .ToListAsync();
 
     return Results.Ok(matches);
@@ -163,6 +163,57 @@ app.MapGet("/players/{steamId}/heroes", async (long steamId, AppDbContext db) =>
     });
 
     return Results.Ok(result);
+});
+
+app.MapGet("/players/{steamId}/recent-form", async (long steamId, AppDbContext db) =>
+{
+    const int recentGames = 10;
+
+    var matches = await db.Matches
+        .Where(m => m.SteamId == steamId)
+        .OrderByDescending(m => m.MatchDate)
+        .Take(recentGames)
+        .ToListAsync();
+
+    if (matches.Count == 0)
+    {
+        return Results.NotFound(new
+        {
+            Message = "No matches found for this player."
+        });
+    }
+
+    var results = matches.Select(m =>
+    {
+        var won =
+            (m.PlayerSlot < 128 && m.RadiantWin) ||
+            (m.PlayerSlot >= 128 && !m.RadiantWin);
+
+        return new
+        {
+            m.MatchId,
+            m.MatchDate,
+            Result = won ? "W" : "L",
+            m.HeroId,
+            m.Kills,
+            m.Deaths,
+            m.Assists,
+            m.Duration
+        };
+    }).ToList();
+
+    var wins = results.Count(r => r.Result == "W");
+    var losses = results.Count(r => r.Result == "L");
+
+    return Results.Ok(new
+    {
+        Games = results.Count,
+        Wins = wins,
+        Losses = losses,
+        WinRate = Math.Round(
+            (double)wins / results.Count * 100, 2),
+        Results = results
+    });
 });
 
 #endregion

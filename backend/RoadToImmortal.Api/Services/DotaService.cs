@@ -66,6 +66,35 @@ public class DotaService
 
         await _db.SaveChangesAsync();
     }
+
+    public async Task SyncHeroesAsync()
+    {
+        string url = "https://api.opendota.com/api/heroStats";
+
+        var heroes = await _httpClient.GetFromJsonAsync<List<DotaHero>>(url)
+                     ?? new List<DotaHero>();
+
+        foreach (var hero in heroes)
+        {
+            var existingHero = await _db.Heroes.FindAsync(hero.HeroId);
+
+            if (existingHero != null)
+            {
+                continue;
+            }
+
+            var databaseHero = new Hero
+            {
+                HeroId = hero.HeroId,
+                Name = hero.Name,
+                LocalizedName = hero.LocalizedName
+            };
+
+            _db.Heroes.Add(databaseHero);
+        }
+
+        await _db.SaveChangesAsync();
+    }
 }
 
 public class DotaMatch
@@ -96,4 +125,16 @@ public class DotaMatch
 
     [JsonPropertyName("assists")]
     public int Assists { get; set; }
+}
+
+public class DotaHero
+{
+    [JsonPropertyName("id")]
+    public int HeroId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("localized_name")]
+    public string LocalizedName { get; set; } = string.Empty;
 }

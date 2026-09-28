@@ -216,6 +216,47 @@ app.MapGet("/players/{steamId}/recent-form", async (long steamId, AppDbContext d
     });
 });
 
+app.MapGet("/players/{steamId}/mmr", async (long steamId, AppDbContext db) =>
+{
+    var snapshots = await db.MmrSnapshots
+        .Where(m => m.SteamId == steamId)
+        .OrderBy(m => m.RecordedAt)
+        .Select(m => new
+        {
+            m.Id,
+            m.Mmr,
+            m.RecordedAt
+        })
+        .ToListAsync();
+
+    if (snapshots.Count == 0)
+    {
+        return Results.NotFound(new
+        {
+            Message = "No MMR history found for this player."
+        });
+    }
+
+    var startingMmr = snapshots.First().Mmr;
+    var currentMmr = snapshots.Last().Mmr;
+    var highestMmr = snapshots.Max(m => m.Mmr);
+
+    var progression = new
+    {
+        SteamId = steamId,
+
+        StartingMmr = startingMmr,
+        CurrentMmr = currentMmr,
+        HighestMmr = highestMmr,
+
+        MmrGained = currentMmr - startingMmr,
+
+        Snapshots = snapshots
+    };
+
+    return Results.Ok(progression);
+});
+
 #endregion
 
 #region POST
@@ -236,14 +277,34 @@ app.MapPost("/players", async (CreatePlayerRequest request, AppDbContext db) =>
     return Results.Created($"/players/{player.SteamId}", player);
 });
 
-app.MapPost("/players/{steamId}/matches/sync", async (long steamId, DotaService dotaService) =>
+app.MapPost("/players/{steamId}/matches/sync", async (long steamId, int mmr, 
+    DotaService dotaService, AppDbContext db) =>
 {
     await dotaService.SyncRecentMatchesAsync(steamId);
+
+    var latestSnapshot = await db.MmrSnapshots
+        .Where(m => m.SteamId == steamId)
+        .OrderByDescending(m => m.RecordedAt)
+        .FirstOrDefaultAsync();
+
+    if (latestSnapshot == null || latestSnapshot.Mmr != mmr)
+    {
+        var snapshot = new MmrSnapshot
+        {
+            SteamId = steamId,
+            Mmr = mmr,
+            RecordedAt = DateTime.UtcNow
+        };
+
+        db.MmrSnapshots.Add(snapshot);
+        await db.SaveChangesAsync();
+    }
 
     return Results.Ok(new
     {
         SteamId = steamId,
-        Message = "Recent matches synced successfully."
+        Mmr = mmr,
+        Message = "Matches and MMR synced successfully."
     });
 });
 
@@ -257,6 +318,25 @@ app.MapPost("/heroes/sync", async (DotaService dotaService) =>
     });
 });
 
+app.MapPost("/players/{steamId}/mmr", async (long steamId, CreateMmrSnapshotRequest request,
+    AppDbContext db) =>
+{
+    var snapshot = new MmrSnapshot
+    {
+        SteamId = steamId,
+        Mmr = request.Mmr,
+        RecordedAt = DateTime.UtcNow
+    };
+
+    db.MmrSnapshots.Add(snapshot);
+
+    await db.SaveChangesAsync();
+
+    return Results.Created(
+        $"/players/{steamId}/mmr/{snapshot.Id}",
+        snapshot);
+});
+
 #endregion
 
 app.Run();
@@ -266,3 +346,5 @@ record CreatePlayerRequest(
     string PersonaName,
     int? CurrentMmr
 );
+
+record CreateMmrSnapshotRequest(int Mmr);

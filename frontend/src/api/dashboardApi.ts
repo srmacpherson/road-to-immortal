@@ -43,6 +43,7 @@ export interface Dashboard {
             matchId: number;
             result: string;
             heroId: number;
+            heroName: string;
             kills: number;
             deaths: number;
             assists: number;

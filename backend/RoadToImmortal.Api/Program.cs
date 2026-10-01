@@ -76,6 +76,8 @@ app.MapGet("/players/{steamId}/dashboard", async (long steamId, AppDbContext db)
         });
     }
 
+    var heroes = await db.Heroes.ToListAsync();
+
     // -------------------------
     // Overall stats
     // -------------------------
@@ -184,6 +186,9 @@ app.MapGet("/players/{steamId}/dashboard", async (long steamId, AppDbContext db)
                 m.MatchId,
                 Result = won ? "W" : "L",
                 m.HeroId,
+                HeroName = heroes
+                    .FirstOrDefault(h => h.HeroId == m.HeroId)?.LocalizedName
+                    ?? "Unknown Hero",
                 m.Kills,
                 m.Deaths,
                 m.Assists,

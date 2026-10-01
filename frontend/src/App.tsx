@@ -137,22 +137,62 @@ activeDot = {{ r: 7 }}
                                             </section>
 
                                             < section className = "grid" >
-                                                <div className="card" >
-                                                    <h2>Recent Form </h2>
+    <div className="card" >
+        <h2>Recent Form </h2>
 
-                                                        < div className = "form" >
-                                                        {
-                                                            dashboard.recentForm.matches.map((match) => (
-                                                                <span
-                  key= { match.matchId }
-                  className = { match.result === "W" ? "win" : "loss" }
-                                                                >
-                                                                { match.result }
-                                                                </span>
-                                                            ))
-                                                        }
-                                                            </div>
-                                                            </div>
+            < div className = "match-list" >
+            {
+                dashboard.recentForm.matches.map((match) => (
+                    <div
+                key= { match.matchId }
+                className = {`match-card ${match.result === "W" ? "match-win" : "match-loss"
+                        }`}
+                >
+                <div className="match-result" >
+                    <strong>
+                    { match.result === "W" ? "WIN" : "LOSS" }
+                    </strong>
+
+                    <span>
+{
+    new Date(match.matchDate).toLocaleDateString(
+        "en-GB",
+        {
+            day: "numeric",
+            month: "short",
+        }
+    )
+}
+</span>
+    </div>
+
+    < div className = "match-hero" >
+        <span>Hero</span>
+        < strong > { match.heroName } </strong>
+        </div>
+
+        < div className = "match-kda" >
+            <span>K / D / A </span>
+            <strong>
+{ match.kills } / {match.deaths} / { match.assists }
+</strong>
+    </div>
+
+    < div className = "match-duration" >
+        <span>Duration </span>
+        <strong>
+{ Math.floor(match.duration / 60) }:
+{
+    (match.duration % 60)
+    .toString()
+    .padStart(2, "0")
+}
+</strong>
+    </div>
+    </div>
+        ))}
+</div>
+    </div>
 
                                                             < div className = "card" >
                                                                 <h2>Overall Stats </h2>
@@ -181,19 +221,37 @@ activeDot = {{ r: 7 }}
                                                                             </div>
                                                                             </section>
 
-                                                                            < section className = "card" >
-                                                                                <h2>Hero Performance </h2>
+    < section className = "card" >
+        <h2>Hero Performance </h2>
 
-{
-    dashboard.heroes.map((hero) => (
-        <div className= "hero-row" key = { hero.heroId } >
-        <strong>{ hero.heroName } </strong>
-        < span > { hero.games } games </span>
-        < span > { hero.winRate } % WR </span>
-    </div>
-    ))
-}
-</section>
+            < div className = "hero-list" >
+            {
+                dashboard.heroes.map((hero) => (
+                    <div className= "hero-performance" key = { hero.heroId } >
+                    <div className="hero-info" >
+                    <strong>{ hero.heroName } </strong>
+                    < span > { hero.games } games </span>
+                    </div>
+
+                < div className = "hero-record" >
+                <span>
+                { hero.wins }W - { hero.losses }L
+                </span>
+                < strong > { hero.winRate } % WR </strong>
+                </div>
+
+                < div className = "hero-kda" >
+                <span>K / D / A </span>
+                <strong>
+                        { hero.averageKills } / { hero.averageDeaths } / { " "}
+                        { hero.averageAssists }
+                    </strong>
+                    </div>
+                    </div>
+                ))
+            }
+                </div>
+                </section>
     </main>
     </div>
   );

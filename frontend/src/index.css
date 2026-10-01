@@ -167,6 +167,94 @@ body {
     cursor: not-allowed;
 }
 
+.match-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.match-card {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1.5fr 1fr;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: #1a1a1a;
+    border-left: 4px solid;
+}
+
+.match-win {
+    border-left-color: #4caf50;
+}
+
+.match-loss {
+    border-left-color: #f44336;
+}
+
+.match-result,
+.match-hero,
+.match-kda,
+.match-duration {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+    .match-result strong {
+        font-size: 14px;
+    }
+
+.match-win .match-result strong {
+    color: #4caf50;
+}
+
+.match-loss .match-result strong {
+    color: #f44336;
+}
+
+.match-card span {
+    font-size: 12px;
+    color: #888;
+}
+
+.match-card strong {
+    font-size: 14px;
+}
+
+.hero-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.hero-performance {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1.5fr;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: #1a1a1a;
+}
+
+.hero-info,
+.hero-record,
+.hero-kda {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.hero-performance span {
+    font-size: 12px;
+    color: #888;
+}
+
+.hero-performance strong {
+    font-size: 14px;
+}
+
 @media (max-width: 700px) {
     .header {
         padding: 24px;

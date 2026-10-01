@@ -1,10 +1,20 @@
 import { useEffect, useState } from "react";
-import { getDashboard, type Dashboard } from "./api/dashboardApi";
+import { getDashboard, syncMatches, type Dashboard } from "./api/dashboardApi";
+import {
+    LineChart,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+} from "recharts";
 
 const STEAM_ID = "76561199124533567";
 
 function App() {
     const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+    const [syncing, setSyncing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -24,6 +34,26 @@ function App() {
         loadDashboard();
     }, []);
 
+    async function handleSync() {
+        if (!dashboard?.mmr.current) {
+            return;
+        }
+
+        try {
+            setSyncing(true);
+
+            await syncMatches(STEAM_ID, dashboard.mmr.current);
+
+            const refreshedDashboard = await getDashboard(STEAM_ID);
+            setDashboard(refreshedDashboard);
+        } catch (err) {
+            console.error(err);
+            setError("Failed to sync matches.");
+        } finally {
+            setSyncing(false);
+        }
+    }
+
     if (loading) {
         return <div className="app" > Loading dashboard...</div>;
     }
@@ -35,25 +65,75 @@ function App() {
 
 return (
     <div className= "app" >
-    <header className="header" >
-        <div>
-        <h1>Road to Immortal </h1>
-            < p > Track the climb.Understand the game.Reach Immortal.</p>
-                </div>
+        <header className="header" >
+            <div>
+                <h1>Road to Immortal </h1>
+                <p> Track the climb.Understand the game.Reach Immortal.</p>
+            </div>
 
-                < div className = "mmr-badge" >
-                    <span>Current MMR </span>
-                        < strong > { dashboard.mmr.current ?? "—" } </strong>
-                        </div>
-                        </header>
+            < div className = "mmr-badge" >
+                <span>Current MMR </span>
+                <strong> { dashboard.mmr.current ?? "—" } </strong>
+                    </div>
+    < button
+className = "sync-button"
+onClick = { handleSync }
+disabled = { syncing }
+    >
+{ syncing? "Syncing...": "Sync Matches" }
+    </button>
+        </header>
 
-                        < main className = "dashboard" >
-                            <section className="card" >
-                                <h2>MMR Progression </h2>
+        < main className = "dashboard" >
+            <section className="card" >
+                <h2>MMR Progression </h2>
 
-                                    < div className = "chart-placeholder" >
-                                        MMR chart coming next
-                                            </div>
+                < div className = "chart-container" >
+                    <ResponsiveContainer width="100%" height = { 300} >
+    <LineChart
+  data={ dashboard.mmr.history }
+margin = {{ top: 10, right: 20, left: 0, bottom: 10 }}
+>
+    <CartesianGrid strokeDasharray="3 3" />
+
+        <XAxis
+    dataKey="recordedAt"
+tickFormatter = {(value) =>
+new Date(value).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+})
+    }
+  />
+
+    < YAxis
+domain = { ["dataMin - 100", "dataMax + 100"]}
+tickFormatter = {(value) => `${value}`}
+  />
+
+    < Tooltip
+labelFormatter = {(value) =>
+new Date(value).toLocaleString("en-GB", {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+})
+    }
+formatter = {(value) => [`${value} MMR`, "MMR"]}
+  />
+
+    < Line
+type = "monotone"
+dataKey = "mmr"
+stroke = "#646cff"
+strokeWidth = { 3}
+dot = {{ r: 5 }}
+activeDot = {{ r: 7 }}
+  />
+    </LineChart>
+    </ResponsiveContainer>
+    </div>
                                             </section>
 
                                             < section className = "grid" >

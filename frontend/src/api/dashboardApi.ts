@@ -67,3 +67,19 @@ export async function getDashboard(
 
     return response.json();
 }
+
+export async function syncMatches(
+    steamId: string,
+    mmr: number
+): Promise<void> {
+    const response = await fetch(
+        `${API_BASE_URL}/players/${steamId}/matches/sync?mmr=${mmr}`,
+        {
+            method: "POST",
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error("Failed to sync matches");
+    }
+}

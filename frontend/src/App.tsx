@@ -222,6 +222,130 @@ activeDot = {{ r: 7 }}
                                                                             </section>
 
     < section className = "card" >
+        <h2>Performance Snapshot </h2>
+
+            < div className = "snapshot-grid" >
+                <div className="snapshot-item" >
+                    <span>Win Rate </span>
+                        < strong > { dashboard.overall.winRate } % </strong>
+                        </div>
+
+                        < div className = "snapshot-item" >
+                            <span>Recent Win Rate </span>
+                                < strong > { dashboard.recentForm.winRate } % </strong>
+                                </div>
+
+                                < div className = "snapshot-item" >
+                                    <span>Average KDA </span>
+                                        <strong>
+{ dashboard.overall.averageKills } /{" "}
+{ dashboard.overall.averageDeaths } /{" "}
+{ dashboard.overall.averageAssists }
+</strong>
+    </div>
+
+    < div className = "snapshot-item" >
+        <span>MMR Gained </span>
+            <strong>
+{ dashboard.mmr.gained >= 0 ? "+" : "" }
+{ dashboard.mmr.gained }
+</strong>
+    </div>
+
+    < div className = "snapshot-item" >
+        <span>Highest MMR </span>
+            < strong > { dashboard.mmr.highest ?? "—" } </strong>
+            </div>
+            </div>
+            </section>
+
+    < section className = "card" >
+        <h2>Recent Performance </h2>
+
+            < div className = "trend-card" >
+                <div>
+                <span>Overall Win Rate </span>
+                    < strong > { dashboard.overall.winRate } % </strong>
+                    </div>
+
+                    < div >
+                    <span>Recent Win Rate </span>
+                        < strong > { dashboard.recentForm.winRate } % </strong>
+                        </div>
+
+                        < div >
+                        <span>Recent Games </span>
+                            < strong > { dashboard.recentForm.games } </strong>
+                            </div>
+                            </div>
+
+                            < div className = "trend-stats" >
+                                <div className="trend-stat" >
+                                    <span>Overall Kills </span>
+                                        < strong > { dashboard.overall.averageKills } </strong>
+                                        </div>
+
+                                        < div className = "trend-stat" >
+                                            <span>Overall Deaths </span>
+                                                < strong > { dashboard.overall.averageDeaths } </strong>
+                                                </div>
+
+                                                < div className = "trend-stat" >
+                                                    <span>Overall Assists </span>
+                                                        < strong > { dashboard.overall.averageAssists } </strong>
+                                                        </div>
+
+                                                        < div className = "trend-stat" >
+                                                            <span>Recent Kills </span>
+                                                                <strong>
+{
+    dashboard.recentForm.games > 0
+    ? (
+        dashboard.recentForm.matches.reduce(
+            (total, match) => total + match.kills,
+            0
+        ) / dashboard.recentForm.games
+    ).toFixed(2)
+    : "—"
+}
+</strong>
+    </div>
+
+    < div className = "trend-stat" >
+        <span>Recent Deaths </span>
+            <strong>
+{
+    dashboard.recentForm.games > 0
+    ? (
+        dashboard.recentForm.matches.reduce(
+            (total, match) => total + match.deaths,
+            0
+        ) / dashboard.recentForm.games
+    ).toFixed(2)
+    : "—"
+}
+</strong>
+    </div>
+
+    < div className = "trend-stat" >
+        <span>Recent Assists </span>
+            <strong>
+{
+    dashboard.recentForm.games > 0
+    ? (
+        dashboard.recentForm.matches.reduce(
+            (total, match) => total + match.assists,
+            0
+        ) / dashboard.recentForm.games
+    ).toFixed(2)
+    : "—"
+}
+</strong>
+    </div>
+    </div>
+    </section>
+
+    < section className = "card" >
         <h2>Hero Performance </h2>
 
             < div className = "hero-list" >

@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+	<!-- Prevent MSBuild from attempting to compile TypeScript/TSX files during dotnet build. -->
+	<TypeScriptCompileBlocked>true</TypeScriptCompileBlocked>
+  </PropertyGroup>
+</Project>

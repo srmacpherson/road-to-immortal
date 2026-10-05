@@ -1,0 +1,131 @@
+using Microsoft.EntityFrameworkCore;
+using RoadToImmortal.Api.Data;
+using RoadToImmortal.Api.Models;
+
+namespace RoadToImmortal.Api.Services;
+
+public class DashboardService : IDashboardService
+{
+    private readonly AppDbContext _db;
+
+    public DashboardService(AppDbContext db)
+    {
+        _db = db;
+    }
+
+    public async Task<DashboardDto?> GetDashboardAsync(long steamId)
+    {
+        var mmrSnapshots = await _db.MmrSnapshots
+            .Where(m => m.SteamId == steamId)
+            .OrderBy(m => m.RecordedAt)
+            .ToListAsync();
+
+        var matches = await _db.Matches
+            .Where(m => m.SteamId == steamId)
+            .OrderByDescending(m => m.MatchDate)
+            .ToListAsync();
+
+        if (matches.Count == 0)
+        {
+            return null;
+        }
+
+        var heroes = await _db.Heroes.ToListAsync();
+
+        var wins = matches.Count(m =>
+            (m.PlayerSlot < 128 && m.RadiantWin) ||
+            (m.PlayerSlot >= 128 && !m.RadiantWin));
+
+        var losses = matches.Count - wins;
+
+        var overall = new OverallDto(
+            Games: matches.Count,
+            Wins: wins,
+            Losses: losses,
+            WinRate: Math.Round((double)wins / matches.Count * 100, 2),
+            AverageKills: Math.Round(matches.Average(m => m.Kills), 2),
+            AverageDeaths: Math.Round(matches.Average(m => m.Deaths), 2),
+            AverageAssists: Math.Round(matches.Average(m => m.Assists), 2)
+        );
+
+        var heroStats = await _db.Matches
+            .Where(m => m.SteamId == steamId)
+            .Join(
+                _db.Heroes,
+                match => match.HeroId,
+                hero => hero.HeroId,
+                (match, hero) => new { match, hero })
+            .GroupBy(x => new { x.hero.HeroId, x.hero.LocalizedName })
+            .Select(group => new
+            {
+                HeroId = group.Key.HeroId,
+                HeroName = group.Key.LocalizedName,
+                Games = group.Count(),
+                Wins = group.Count(x =>
+                    (x.match.PlayerSlot < 128 && x.match.RadiantWin) ||
+                    (x.match.PlayerSlot >= 128 && !x.match.RadiantWin)),
+                AverageKills = Math.Round(group.Average(x => x.match.Kills), 2),
+                AverageDeaths = Math.Round(group.Average(x => x.match.Deaths), 2),
+                AverageAssists = Math.Round(group.Average(x => x.match.Assists), 2)
+            })
+            .OrderByDescending(h => h.Games)
+            .ToListAsync();
+
+        var heroPerformance = heroStats.Select(h => new HeroPerformanceDto(
+            HeroId: h.HeroId,
+            HeroName: h.HeroName,
+            Games: h.Games,
+            Wins: h.Wins,
+            Losses: h.Games - h.Wins,
+            WinRate: Math.Round((double)h.Wins / h.Games * 100, 2),
+            AverageKills: h.AverageKills,
+            AverageDeaths: h.AverageDeaths,
+            AverageAssists: h.AverageAssists
+        )).ToList();
+
+        const int recentGameCount = 10;
+
+        var recentMatches = matches
+            .Take(recentGameCount)
+            .Select(m =>
+            {
+                var won = (m.PlayerSlot < 128 && m.RadiantWin) || (m.PlayerSlot >= 128 && !m.RadiantWin);
+                return new RecentMatchDto(
+                    MatchId: m.MatchId,
+                    Result: won ? "W" : "L",
+                    HeroId: m.HeroId,
+                    HeroName: heroes.FirstOrDefault(h => h.HeroId == m.HeroId)?.LocalizedName ?? "Unknown Hero",
+                    Kills: m.Kills,
+                    Deaths: m.Deaths,
+                    Assists: m.Assists,
+                    Duration: m.Duration,
+                    MatchDate: m.MatchDate
+                );
+            })
+            .ToList();
+
+        var recentWins = recentMatches.Count(m => m.Result == "W");
+
+        var dashboard = new DashboardDto(
+            SteamId: steamId,
+            Mmr: new MmrDto(
+                Starting: mmrSnapshots.FirstOrDefault()?.Mmr,
+                Current: mmrSnapshots.LastOrDefault()?.Mmr,
+                Highest: mmrSnapshots.Count > 0 ? mmrSnapshots.Max(m => m.Mmr) : (int?)null,
+                Gained: mmrSnapshots.Count > 0 ? mmrSnapshots.Last().Mmr - mmrSnapshots.First().Mmr : 0,
+                History: mmrSnapshots.Select(m => new MmrSnapshotDto(m.Mmr, m.RecordedAt)).ToList()
+            ),
+            Overall: overall,
+            Heroes: heroPerformance,
+            RecentForm: new RecentFormDto(
+                Games: recentMatches.Count,
+                Wins: recentWins,
+                Losses: recentMatches.Count - recentWins,
+                WinRate: recentMatches.Count > 0 ? Math.Round((double)recentWins / recentMatches.Count * 100, 2) : 0,
+                Matches: recentMatches
+            )
+        );
+
+        return dashboard;
+    }
+}

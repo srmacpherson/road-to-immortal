@@ -11,6 +11,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddHttpClient<SteamService>();
 builder.Services.AddHttpClient<DotaService>();
 
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -48,204 +50,14 @@ app.MapGet("/", () =>
     });
 });
 
-app.MapGet("/players/{steamId}/dashboard", async (long steamId, AppDbContext db) =>
+app.MapGet("/players/{steamId}/dashboard", async (long steamId, IDashboardService dashboardService) =>
 {
-    // -------------------------
-    // MMR
-    // -------------------------
+    var dashboard = await dashboardService.GetDashboardAsync(steamId);
 
-    var mmrSnapshots = await db.MmrSnapshots
-        .Where(m => m.SteamId == steamId)
-        .OrderBy(m => m.RecordedAt)
-        .ToListAsync();
-
-    // -------------------------
-    // Matches
-    // -------------------------
-
-    var matches = await db.Matches
-        .Where(m => m.SteamId == steamId)
-        .OrderByDescending(m => m.MatchDate)
-        .ToListAsync();
-
-    if (matches.Count == 0)
+    if (dashboard is null)
     {
-        return Results.NotFound(new
-        {
-            Message = "No matches found for this player."
-        });
+        return Results.NotFound(new { Message = "No matches found for this player." });
     }
-
-    var heroes = await db.Heroes.ToListAsync();
-
-    // -------------------------
-    // Overall stats
-    // -------------------------
-
-    var wins = matches.Count(m =>
-        (m.PlayerSlot < 128 && m.RadiantWin) ||
-        (m.PlayerSlot >= 128 && !m.RadiantWin));
-
-    var losses = matches.Count - wins;
-
-    var overallStats = new
-    {
-        Games = matches.Count,
-        Wins = wins,
-        Losses = losses,
-
-        WinRate = Math.Round(
-            (double)wins / matches.Count * 100, 2),
-
-        AverageKills = Math.Round(
-            matches.Average(m => m.Kills), 2),
-
-        AverageDeaths = Math.Round(
-            matches.Average(m => m.Deaths), 2),
-
-        AverageAssists = Math.Round(
-            matches.Average(m => m.Assists), 2)
-    };
-
-    // -------------------------
-    // Hero Performance
-    // -------------------------
-
-    var heroStats = await db.Matches
-    .Where(m => m.SteamId == steamId)
-    .Join(
-        db.Heroes,
-        match => match.HeroId,
-        hero => hero.HeroId,
-        (match, hero) => new
-        {
-            match,
-            hero
-        })
-    .GroupBy(x => new
-    {
-        x.hero.HeroId,
-        x.hero.LocalizedName
-    })
-    .Select(group => new
-    {
-        HeroId = group.Key.HeroId,
-        HeroName = group.Key.LocalizedName,
-
-        Games = group.Count(),
-
-        Wins = group.Count(x =>
-            (x.match.PlayerSlot < 128 && x.match.RadiantWin) ||
-            (x.match.PlayerSlot >= 128 && !x.match.RadiantWin)),
-
-        AverageKills = Math.Round(
-            group.Average(x => x.match.Kills), 2),
-
-        AverageDeaths = Math.Round(
-            group.Average(x => x.match.Deaths), 2),
-
-        AverageAssists = Math.Round(
-            group.Average(x => x.match.Assists), 2)
-    })
-    .OrderByDescending(h => h.Games)
-    .ToListAsync();
-
-    var heroPerformance = heroStats.Select(h => new
-    {
-        h.HeroId,
-        h.HeroName,
-        h.Games,
-        h.Wins,
-
-        Losses = h.Games - h.Wins,
-
-        WinRate = Math.Round(
-            (double)h.Wins / h.Games * 100, 2),
-
-        h.AverageKills,
-        h.AverageDeaths,
-        h.AverageAssists
-    }).ToList();
-
-    // -------------------------
-    // Recent form
-    // -------------------------
-
-    const int recentGameCount = 10;
-
-    var recentMatches = matches
-        .Take(recentGameCount)
-        .Select(m =>
-        {
-            var won =
-                (m.PlayerSlot < 128 && m.RadiantWin) ||
-                (m.PlayerSlot >= 128 && !m.RadiantWin);
-
-            return new
-            {
-                m.MatchId,
-                Result = won ? "W" : "L",
-                m.HeroId,
-                HeroName = heroes
-                    .FirstOrDefault(h => h.HeroId == m.HeroId)?.LocalizedName
-                    ?? "Unknown Hero",
-                m.Kills,
-                m.Deaths,
-                m.Assists,
-                m.Duration,
-                m.MatchDate
-            };
-        })
-        .ToList();
-
-    var recentWins = recentMatches.Count(m => m.Result == "W");
-
-    // -------------------------
-    // Dashboard
-    // -------------------------
-
-    var dashboard = new
-    {
-        SteamId = steamId,
-
-        Mmr = new
-        {
-            Starting = mmrSnapshots.FirstOrDefault()?.Mmr,
-            Current = mmrSnapshots.LastOrDefault()?.Mmr,
-            Highest = mmrSnapshots.Count > 0
-                ? mmrSnapshots.Max(m => m.Mmr)
-                : (int?)null,
-
-            Gained = mmrSnapshots.Count > 0
-                ? mmrSnapshots.Last().Mmr - mmrSnapshots.First().Mmr
-                : 0,
-
-            History = mmrSnapshots.Select(m => new
-            {
-                m.Mmr,
-                m.RecordedAt
-            })
-        },
-
-        Overall = overallStats,
-
-        Heroes = heroPerformance,
-
-        RecentForm = new
-        {
-            Games = recentMatches.Count,
-            Wins = recentWins,
-            Losses = recentMatches.Count - recentWins,
-
-            WinRate = recentMatches.Count > 0
-                ? Math.Round(
-                    (double)recentWins /
-                    recentMatches.Count * 100, 2)
-                : 0,
-
-            Matches = recentMatches
-        }
-    };
 
     return Results.Ok(dashboard);
 });

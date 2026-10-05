@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getDashboard, syncMatches, type Dashboard } from "./api/dashboardApi";
+import { getDashboard, syncMatches, confirmMmr, updatePlayerMmr, type Dashboard } from "./api/dashboardApi";
 import {
     LineChart,
     Line,
@@ -17,6 +17,10 @@ function App() {
     const [syncing, setSyncing] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [confirming, setConfirming] = useState(false);
+    const [confirmValue, setConfirmValue] = useState<number | null>(null);
+    const [manualMmr, setManualMmr] = useState<number | null>(null);
+    const [updatingMmr, setUpdatingMmr] = useState(false);
 
     useEffect(() => {
         async function loadDashboard() {
@@ -67,21 +71,87 @@ return (
     <div className= "app" >
         <header className="header" >
             <div>
-                <h1>Road to Immortal </h1>
-                <p> Track the climb.Understand the game.Reach Immortal.</p>
+                <h1>Road to Immortal</h1>
+                <p>Track the climb. Understand the game. Reach Immortal.</p>
             </div>
 
-            < div className = "mmr-badge" >
-                <span>Current MMR </span>
-                <strong> { dashboard.mmr.current ?? "—" } </strong>
+            <div className="mmr-badge">
+                <span>Current MMR</span>
+                <strong>{dashboard.mmr.current ?? "—"}</strong>
+                {dashboard.mmr.predictedMmr != null && (
+                    <div className="predicted">
+                        <small>Predicted: </small>
+                        <strong>{dashboard.mmr.predictedMmr}</strong>
+                        <small> ({dashboard.mmr.predictionDelta >= 0 ? "+" : ""}{dashboard.mmr.predictionDelta})</small>
                     </div>
-    < button
-className = "sync-button"
-onClick = { handleSync }
-disabled = { syncing }
-    >
-{ syncing? "Syncing...": "Sync Matches" }
-    </button>
+                )}
+                <div className="manual-update">
+                    <input
+                        type="number"
+                        placeholder="Set MMR"
+                        value={manualMmr ?? ""}
+                        onChange={(e) => setManualMmr(e.target.value ? Number(e.target.value) : null)}
+                    />
+                    <button
+                        onClick={async () => {
+                            if (manualMmr == null) return;
+                            try {
+                                setUpdatingMmr(true);
+                                await updatePlayerMmr(STEAM_ID, manualMmr);
+                                const refreshed = await getDashboard(STEAM_ID);
+                                setDashboard(refreshed);
+                            } catch (err) {
+                                console.error(err);
+                                setError("Failed to update MMR.");
+                            } finally {
+                                setUpdatingMmr(false);
+                            }
+                        }}
+                        disabled={updatingMmr}
+                    >
+                        {updatingMmr ? "Updating..." : "Update MMR"}
+                    </button>
+                </div>
+            </div>
+
+            <button className="sync-button" onClick={handleSync} disabled={syncing}>
+                {syncing ? "Syncing..." : "Sync Matches"}
+            </button>
+
+            {/* Confirmation prompt */}
+            {dashboard.mmr.predictionNeedsConfirmation && (
+                <div className="confirm-mmr">
+                    <p>
+                        Predicted MMR differs from confirmed by {dashboard.mmr.predictionDelta}. Please confirm your current MMR.
+                    </p>
+                    <div className="confirm-controls">
+                        <input
+                            type="number"
+                            value={confirmValue ?? dashboard.mmr.predictedMmr ?? undefined}
+                            onChange={(e) => setConfirmValue(Number(e.target.value))}
+                        />
+                        <button
+                            onClick={async () => {
+                                if (confirmValue == null) return;
+                                try {
+                                    setConfirming(true);
+                                    await confirmMmr(STEAM_ID, confirmValue);
+                                    const refreshed = await getDashboard(STEAM_ID);
+                                    setDashboard(refreshed);
+                                } catch (err) {
+                                    console.error(err);
+                                    setError("Failed to confirm MMR.");
+                                } finally {
+                                    setConfirming(false);
+                                }
+                            }}
+                            disabled={confirming}
+                        >
+                            {confirming ? "Confirming..." : "Confirm MMR"}
+                        </button>
+                    </div>
+                </div>
+            )}
         </header>
 
         < main className = "dashboard" >

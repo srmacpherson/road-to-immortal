@@ -10,6 +10,10 @@ export interface Dashboard {
             mmr: number;
             recordedAt: string;
         }[];
+        confirmedMmr?: number | null;
+        predictedMmr?: number | null;
+        predictionDelta?: number | null;
+        predictionNeedsConfirmation?: boolean;
     };
 
     overall: {
@@ -51,6 +55,42 @@ export interface Dashboard {
             matchDate: string;
         }[];
     };
+}
+
+export async function updatePlayerMmr(
+    steamId: string,
+    currentMmr: number
+): Promise<void> {
+    const response = await fetch(
+        `${API_BASE_URL}/players/${steamId}`,
+        {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ currentMmr }),
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error("Failed to update player MMR");
+    }
+}
+
+export async function confirmMmr(
+    steamId: string,
+    mmr: number
+): Promise<void> {
+    const response = await fetch(
+        `${API_BASE_URL}/players/${steamId}/mmr/confirm`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mmr }),
+        }
+    );
+
+    if (!response.ok) {
+        throw new Error("Failed to confirm MMR");
+    }
 }
 
 const API_BASE_URL = "http://127.0.0.1:5184";

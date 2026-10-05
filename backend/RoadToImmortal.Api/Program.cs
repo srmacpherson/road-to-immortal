@@ -389,6 +389,24 @@ app.MapPost("/players/{steamId}/mmr/confirm", async (long steamId, CreateMmrSnap
     return Results.Created($"/players/{steamId}/mmr/{snapshot.Id}", snapshot);
 });
 
+// Allow direct update of a player's current MMR without creating a confirmed snapshot.
+app.MapPatch("/players/{steamId}", async (long steamId, UpdatePlayerMmrRequest request, AppDbContext db) =>
+{
+    var player = await db.Players.FindAsync(steamId);
+
+    if (player == null)
+    {
+        return Results.NotFound(new { Message = "Player not found." });
+    }
+
+    player.CurrentMmr = request.CurrentMmr;
+    player.LastUpdated = DateTime.UtcNow;
+
+    await db.SaveChangesAsync();
+
+    return Results.Ok(player);
+});
+
 #endregion
 
 app.Run();
@@ -400,3 +418,5 @@ record CreatePlayerRequest(
 );
 
 record CreateMmrSnapshotRequest(int Mmr);
+
+record UpdatePlayerMmrRequest(int? CurrentMmr);

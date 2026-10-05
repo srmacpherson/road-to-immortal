@@ -23,8 +23,17 @@ public class DashboardService : IDashboardService
             .OrderBy(m => m.RecordedAt)
             .ToListAsync();
 
-        var matches = await _db.Matches
-            .Where(m => m.SteamId == steamId)
+        // apply ranked-match filtering if configured
+        var rankedModes = _config.GetSection("RankedGameModes").Get<int[]>() ?? Array.Empty<int>();
+
+        IQueryable<Match> matchesQuery = _db.Matches.Where(m => m.SteamId == steamId);
+
+        if (rankedModes.Length > 0)
+        {
+            matchesQuery = matchesQuery.Where(m => rankedModes.Contains(m.GameMode));
+        }
+
+        var matches = await matchesQuery
             .OrderByDescending(m => m.MatchDate)
             .ToListAsync();
 
@@ -51,8 +60,13 @@ public class DashboardService : IDashboardService
             AverageAssists: Math.Round(matches.Average(m => m.Assists), 2)
         );
 
-        var heroStats = await _db.Matches
-            .Where(m => m.SteamId == steamId)
+        var matchesForHeroQuery = _db.Matches.Where(m => m.SteamId == steamId);
+        if (rankedModes.Length > 0)
+        {
+            matchesForHeroQuery = matchesForHeroQuery.Where(m => rankedModes.Contains(m.GameMode));
+        }
+
+        var heroStats = await matchesForHeroQuery
             .Join(
                 _db.Heroes,
                 match => match.HeroId,

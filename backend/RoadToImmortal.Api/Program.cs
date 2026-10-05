@@ -363,6 +363,32 @@ app.MapPost("/players/{steamId}/mmr", async (long steamId, CreateMmrSnapshotRequ
         snapshot);
 });
 
+app.MapPost("/players/{steamId}/mmr/confirm", async (long steamId, CreateMmrSnapshotRequest request,
+    AppDbContext db) =>
+{
+    var snapshot = new MmrSnapshot
+    {
+        SteamId = steamId,
+        Mmr = request.Mmr,
+        RecordedAt = DateTime.UtcNow,
+        IsConfirmed = true
+    };
+
+    db.MmrSnapshots.Add(snapshot);
+
+    var player = await db.Players.FindAsync(steamId);
+
+    if (player != null)
+    {
+        player.CurrentMmr = request.Mmr;
+        player.LastUpdated = DateTime.UtcNow;
+    }
+
+    await db.SaveChangesAsync();
+
+    return Results.Created($"/players/{steamId}/mmr/{snapshot.Id}", snapshot);
+});
+
 #endregion
 
 app.Run();

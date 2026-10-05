@@ -16,7 +16,11 @@ public record MmrDto(
     int? Current,
     int? Highest,
     int Gained,
-    List<MmrSnapshotDto> History
+    List<MmrSnapshotDto> History,
+    int? ConfirmedMmr,
+    int? PredictedMmr,
+    int? PredictionDelta,
+    bool PredictionNeedsConfirmation
 );
 
 public record MmrSnapshotDto(int Mmr, DateTime RecordedAt);

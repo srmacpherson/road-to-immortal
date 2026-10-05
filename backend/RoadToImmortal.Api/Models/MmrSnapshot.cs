@@ -12,4 +12,7 @@ public class MmrSnapshot
     public int Mmr { get; set; }
 
     public DateTime RecordedAt { get; set; } = DateTime.UtcNow;
+
+    // Was this snapshot confirmed by the user (true) or estimated/automatic (false)?
+    public bool IsConfirmed { get; set; } = false;
 }

@@ -6,6 +6,8 @@ using RoadToImmortal.Api.Data;
 using RoadToImmortal.Api.Models;
 using RoadToImmortal.Api.Services;
 using Xunit;
+using Microsoft.Extensions.Configuration;
+using System.Collections.Generic;
 
 namespace RoadToImmortal.Api.Tests;
 
@@ -25,7 +27,15 @@ public class DashboardServiceTests
     {
         using var db = CreateContext();
 
-        var svc = new DashboardService(db);
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>
+            {
+                ["MmrPerGame"] = "25",
+                ["ConfirmationThreshold"] = "50"
+            })
+            .Build();
+
+        var svc = new DashboardService(db, config);
 
         var result = await svc.GetDashboardAsync(12345);
 
@@ -51,7 +61,15 @@ public class DashboardServiceTests
 
         db.SaveChanges();
 
-        var svc = new DashboardService(db);
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string>
+            {
+                ["MmrPerGame"] = "25",
+                ["ConfirmationThreshold"] = "50"
+            })
+            .Build();
+
+        var svc = new DashboardService(db, config);
 
         var dashboard = await svc.GetDashboardAsync(111);
 

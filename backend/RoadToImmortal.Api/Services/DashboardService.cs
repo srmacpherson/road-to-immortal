@@ -1,16 +1,19 @@
 using Microsoft.EntityFrameworkCore;
 using RoadToImmortal.Api.Data;
 using RoadToImmortal.Api.Models;
+using Microsoft.Extensions.Configuration;
 
 namespace RoadToImmortal.Api.Services;
 
 public class DashboardService : IDashboardService
 {
     private readonly AppDbContext _db;
+    private readonly IConfiguration _config;
 
-    public DashboardService(AppDbContext db)
+    public DashboardService(AppDbContext db, IConfiguration config)
     {
         _db = db;
+        _config = config;
     }
 
     public async Task<DashboardDto?> GetDashboardAsync(long steamId)
@@ -106,6 +109,68 @@ public class DashboardService : IDashboardService
 
         var recentWins = recentMatches.Count(m => m.Result == "W");
 
+        // -------------------------
+        // Predicted MMR
+        // -------------------------
+
+        // configuration
+        var mmrPerGame = _config.GetValue<int?>("MmrPerGame") ?? 25;
+        var confirmationThreshold = _config.GetValue<int?>("ConfirmationThreshold") ?? 50;
+        // no-op patch: insertion to ensure proper apply ordering
+
+        // find last confirmed snapshot
+        var lastConfirmed = await _db.MmrSnapshots
+            .Where(m => m.SteamId == steamId && m.IsConfirmed)
+            .OrderByDescending(m => m.RecordedAt)
+            .FirstOrDefaultAsync();
+
+        int? confirmedMmr = lastConfirmed?.Mmr;
+        DateTime anchorTime = DateTime.MinValue;
+
+        if (lastConfirmed != null)
+        {
+            anchorTime = lastConfirmed.RecordedAt;
+        }
+        else
+        {
+            // fall back to player current mmr
+            var player = await _db.Players.FindAsync(steamId);
+            if (player != null && player.CurrentMmr.HasValue)
+            {
+                confirmedMmr = player.CurrentMmr;
+                anchorTime = player.LastUpdated;
+            }
+            else if (mmrSnapshots.Count > 0)
+            {
+                // fall back to latest snapshot
+                var last = mmrSnapshots.Last();
+                confirmedMmr = last.Mmr;
+                anchorTime = last.RecordedAt;
+            }
+        }
+
+        int? predictedMmr = null;
+        int? predictionDelta = null;
+        bool needsConfirmation = false;
+
+        if (confirmedMmr.HasValue)
+        {
+            // determine matches since anchor
+            var matchesSinceAnchor = matches
+                .Where(m => m.MatchDate > anchorTime)
+                .ToList();
+
+            var winsSince = matchesSinceAnchor.Count(m =>
+                (m.PlayerSlot < 128 && m.RadiantWin) ||
+                (m.PlayerSlot >= 128 && !m.RadiantWin));
+
+            var lossesSince = matchesSinceAnchor.Count - winsSince;
+
+            predictedMmr = confirmedMmr + (winsSince - lossesSince) * mmrPerGame;
+            predictionDelta = predictedMmr - confirmedMmr;
+            needsConfirmation = Math.Abs(predictionDelta.Value) >= confirmationThreshold;
+        }
+
         var dashboard = new DashboardDto(
             SteamId: steamId,
             Mmr: new MmrDto(
@@ -113,7 +178,11 @@ public class DashboardService : IDashboardService
                 Current: mmrSnapshots.LastOrDefault()?.Mmr,
                 Highest: mmrSnapshots.Count > 0 ? mmrSnapshots.Max(m => m.Mmr) : (int?)null,
                 Gained: mmrSnapshots.Count > 0 ? mmrSnapshots.Last().Mmr - mmrSnapshots.First().Mmr : 0,
-                History: mmrSnapshots.Select(m => new MmrSnapshotDto(m.Mmr, m.RecordedAt)).ToList()
+                History: mmrSnapshots.Select(m => new MmrSnapshotDto(m.Mmr, m.RecordedAt)).ToList(),
+                ConfirmedMmr: confirmedMmr,
+                PredictedMmr: predictedMmr,
+                PredictionDelta: predictionDelta,
+                PredictionNeedsConfirmation: needsConfirmation
             ),
             Overall: overall,
             Heroes: heroPerformance,
